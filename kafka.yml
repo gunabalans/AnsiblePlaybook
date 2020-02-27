@@ -1,0 +1,93 @@
+---
+- hosts: awsserver
+  gather_facts: yes
+  remote_user: centos
+
+  # ansible-playbook kafka.yml --check
+  vars:
+    kafka_src_download_url: http://www-us.apache.org/dist/kafka/2.1.1/kafka_2.11-2.1.1.tgz 
+    kafka_installation_dir: /opt
+    kafka_version: kafka_2.11-2.1.1
+    kafka_logs_dir: /etc/kafkalog/klog
+    kafka_log4j_dir: /etc/kafkalog/log4j
+    kafka_zookeeper_data_dir: /var/zkkafka/data
+    kafka_cofiguration_tempalte_dir: /root/meAnsiblePlaybook/config
+
+    kafka_cofiguration_dir: "{{ kafka_installation_dir }}/{{ kafka_version }}/config"
+
+    current_target_host_name: "{{ inventory_hostname }}"
+    current_target_host_ip: "{{ hostvars[current_target_host_name]['ansible_host'] }}"
+    current_target_broker_id: "{{ hostvars[current_target_host_name]['broker_id'] }}"
+    
+
+  tasks:
+  - name: Install OpenJDK Runtime #install open JDK
+    yum: 
+     name: java-1.8.0-openjdk.x86_64
+     state: latest
+
+  - name: setup the "JAVA_HOME" and "JRE_HOME" environment variables
+    lineinfile:
+        path: /etc/profile
+        backup: yes
+        insertafter: EOF
+        line: export JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk
+
+  - name: reload /etc/profile to take effet of env variables
+    shell: source /etc/profile
+
+  - name: Download the latest stable version of Apache Kafka from the official website.
+    unarchive:
+        src: "{{ kafka_src_download_url }}"
+        dest: "{{ kafka_installation_dir }}"
+        remote_src: yes
+
+  
+  - name: create required directories for kafka and zk  #Create directories
+    file: 
+        path: "{{ item }}"
+        state: directory
+        recurse: yes
+    with_items:
+         - "{{ kafka_logs_dir }}"
+         - "{{ kafka_log4j_dir }}"
+         - "{{ kafka_zookeeper_data_dir }}"
+
+        
+
+  - name: copy kafka log4j configuration file #Configuration
+    template:
+     src: "{{ kafka_cofiguration_tempalte_dir }}/log4j.j2"
+     dest: "{{ kafka_cofiguration_dir }}/log4j.properties"
+     mode: 0400
+
+  - name: copy kafka zookeeper configuration file
+    template:
+     src: "{{ kafka_cofiguration_tempalte_dir }}/zookeeper.j2"
+     dest: "{{ kafka_cofiguration_dir }}/zookeeper.properties"
+     mode: 0400            
+        
+  - name: copy kafka server configuration file
+    template:
+     src: "{{ kafka_cofiguration_tempalte_dir }}/server.j2"
+     dest: "{{ kafka_cofiguration_dir }}/server.properties"
+     mode: 0400            
+  
+  - name: copy kafka producer configuration file
+    template:
+     src: "{{ kafka_cofiguration_tempalte_dir }}/producer.j2"
+     dest: "{{ kafka_cofiguration_dir }}/producer.properties"
+     mode: 0400            
+  
+  - name: copy kafka consumer configuration file
+    template:
+     src: "{{ kafka_cofiguration_tempalte_dir }}/consumer.j2"
+     dest: "{{ kafka_cofiguration_dir }}/consumer.properties"
+     mode: 0400
+
+################Fixing warning##################################
+#OpenJDK 64-Bit Server VM warning: 
+#If the number of processors is expected to increase from one, 
+#then you should configure the number of parallel GC threads appropriately 
+#using -XX:ParallelGCThreads=N
+

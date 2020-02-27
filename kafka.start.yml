@@ -1,0 +1,30 @@
+---
+- hosts: awsserver
+  gather_facts: yes
+  remote_user: centos
+  become: yes
+  become_method: sudo
+  become_user: root
+  # ansible-playbook kafka.start.yml -e "server=zkstart"
+  vars:
+    kafka_installation_dir: /opt
+    kafka_version: kafka_2.11-2.1.1
+    kafka_home_dir: "{{ kafka_installation_dir }}/{{ kafka_version }}"
+
+  tasks:
+
+  - name: Start zookeeper 
+    shell: "sudo  {{ kafka_home_dir }}/bin/zookeeper-server-start.sh {{ kafka_home_dir }}/config/zookeeper.properties"
+    when: server == 'zkstart'
+
+  - name: Stop zookeeper 
+    shell: "sudo  {{ kafka_home_dir }}/bin/zookeeper-server-stop.sh"
+    when: server == 'zkstop'
+
+  - name: Start kafka server 
+    shell: "sudo  {{ kafka_home_dir }}/bin/kafka-server-start.sh {{ kafka_home_dir }}/config/server.properties"
+    when: server == 'kfstart'
+
+  - name: Stop kafka server 
+    shell: "sudo  {{ kafka_home_dir }}/bin/kafka-server-stop.sh"
+    when: server == 'kfstop'
